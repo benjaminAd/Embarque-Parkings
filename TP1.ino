@@ -4,6 +4,7 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #include <yxml.h>
+#include <stdlib.h>
 #include "parkings.h"
 #include "wifiLogs.h"
 
@@ -29,7 +30,7 @@ const parking_t parkings[] = {
                              { "FR_MTP_CIRC",  "Circé Odysseum",             3.917849500000000, 43.604953770000002 },
                              { "FR_MTP_SABI",  "Sabines",                    3.860224600000000, 43.583832630000003 },
                              { "FR_MTP_GARC",  "Garcia Lorca",               3.890715800000000, 43.590985089999997 },
-                             { "FR_CAS_SABL",  "Notre Dame de Sablassou",    3.922295360000000, 43.634191940000001 },
+                             { "FR_MTP_SABL",  "Notre Dame de Sablassou",    3.922295360000000, 43.634191940000001 },
                              { "FR_MTP_MOSS",  "Mosson",                     3.819665540000000, 43.616237159999997 },
                              { "FR_STJ_SJLC",  "Saint-Jean-le-Sec",          3.837931200000000, 43.570822249999999 },
                              { "FR_MTP_MEDC",  "Euromédecine",               3.827723650000000, 43.638953590000000 },
@@ -66,90 +67,9 @@ parking_data_t* available_parkings;
 #define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
 #define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
 
-int c;
 yxml_ret_t r;
 yxml_t x[1];
 char stack[32];
-int verbose = 0;
-
-
-void y_printchar(char c) {
-  if(c == '\x7F' || (c >= 0 && c < 0x20)) {
-    Serial.print("\\x");
-    Serial.print(c, HEX); 
-  }
-  else
-    Serial.print(c); 
-}
-
-void y_printstring(const char *str) {
-  while(*str) {
-    y_printchar(*str);
-    str++;
-  }
-}
-
-void y_printtoken(yxml_t *x, const char *str) {
-  Serial.println("");
-  Serial.print(str);
-}
-
-void y_printres(yxml_t *x, yxml_ret_t r) {
-  static int indata;
-  int nextdata = 0;
-
-  switch(r) {
-  case YXML_OK:
-    if (verbose) {
-      y_printtoken(x, "ok");
-      nextdata = 0;
-    }
-    else
-      nextdata = indata;
-    break;
-  case YXML_ELEMSTART:
-    y_printtoken(x, "elemstart ");
-    y_printstring(x->elem);
-    if (yxml_symlen(x, x->elem) != strlen(x->elem))
-      y_printtoken(x, "assertfail: elem lengths don't match");
-    if (r & YXML_CONTENT)
-      y_printtoken(x, "content");
-    break;
-  case YXML_ELEMEND:
-    y_printtoken(x, "elemend");
-    break;
-  case YXML_ATTRSTART:
-    y_printtoken(x, "attrstart ");
-    y_printstring(x->attr);
-    if (yxml_symlen(x, x->attr) != strlen(x->attr))
-      y_printtoken(x, "assertfail: attr lengths don't match");
-    break;
-  case YXML_ATTREND:
-    y_printtoken(x, "attrend");
-    break;
-  case YXML_PICONTENT:
-  case YXML_CONTENT:
-  case YXML_ATTRVAL:
-    if (!indata)
-      y_printtoken(x, r == YXML_CONTENT ? "content " : r == YXML_PICONTENT ? "picontent " : "attrval ");
-    y_printstring(x->data);
-    nextdata = 1;
-    break;
-  case YXML_PISTART:
-    y_printtoken(x, "pistart ");
-    y_printstring(x->pi);
-    if (yxml_symlen(x, x->pi) != strlen(x->pi))
-      y_printtoken(x, "assertfail: pi lengths don't match");
-    break;
-  case YXML_PIEND:
-    y_printtoken(x, "piend");
-    break;
-  default:
-    y_printtoken(x, "error\n");
-    exit(0);
-  }
-  indata = nextdata;
-}
 
 String _buildURL(const char *id) {
   String res = MONTPELLIER3M_BASE_URL;
@@ -159,20 +79,57 @@ String _buildURL(const char *id) {
   return res;
 }
 
-bool getParkingInformation(String response, parking_data_t &data) {
+int getAvailableSpaces(String response) {
   yxml_init(x, stack, sizeof(stack));
 
   const char* xml = response.c_str();
+  char sizebuf[1024], *sizecur = NULL, *tmp;
+  bool isFree = false, isOpen = false;
 
   while (*xml) {
     r = yxml_parse(x, *xml);
-    y_printres(x, r);
+
+    switch(r) {
+      case YXML_ELEMSTART:
+        if(strcmp(x->elem, "Status") == 0 || strcmp(x->elem, "Free") == 0) {
+          sizecur = sizebuf;
+          isFree = (strcmp(x->elem, "Free") == 0);
+        }
+        if (yxml_symlen(x, x->elem) != strlen(x->elem))
+          Serial.println("assertfail: elem lengths don't match");
+        break;
+      case YXML_CONTENT:
+        if(!sizecur) /* Are we in the "Status" or "Free" element? */
+          break;
+        /* Append x->data to sizecur while there is space */
+        tmp = x->data;
+        while(*tmp && sizecur < sizebuf+sizeof(sizebuf))
+          *(sizecur++) = *(tmp++);
+        if(sizecur == sizebuf+sizeof(sizebuf))
+          exit(1); /* Too long element content, handle error */
+        *sizecur = 0;
+        break;
+      case YXML_ELEMEND:
+        if(sizecur) {
+          /* Now we have the value of the "Status" or "Free" element in sizebuf */
+          if(isFree) {
+            if(isOpen) {
+              return atoi(sizebuf);
+            } else {
+              return -1;
+            }
+          } else {
+            isOpen = (strcmp(sizebuf, "Open") == 0);
+          }
+          sizecur = NULL;
+        }
+        break;
+    }
+    
     xml++;
   }
-
-  y_printtoken(x, yxml_eof(x) < 0 ? "error\n" : "ok\n");
-
-  return true;
+  
+  return -1;
 }
 
 void setup() {
@@ -230,7 +187,14 @@ void loop() {
             String payload = https.getString();
             
             parking_data_t data;
-            getParkingInformation(payload, data);
+            int spaces = getAvailableSpaces(payload);
+
+            if(spaces > 0) {
+              data.id = ptr->id;
+              data.free = spaces;
+
+              Serial.printf("Le pkg %s a %d places disponibles\n", data.id, data.free);
+            }
           }
         } else {
           Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
