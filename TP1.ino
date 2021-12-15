@@ -3,6 +3,7 @@
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
+#include <TinyXML.h>
 #include "parkings.h"
 
 // Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
