@@ -5,6 +5,7 @@
 #include <WiFiClientSecureBearSSL.h>
 #include <yxml.h>
 #include "parkings.h"
+#include "wifiLogs.h"
 
 // Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
 const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
@@ -190,7 +191,7 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP("TP_IOT", "12345678");
+  WiFiMulti.addAP(wifi_name, wifi_password);
 }
 
 void loop() {
