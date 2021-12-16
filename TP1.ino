@@ -8,6 +8,12 @@
 #include "parkings.h"
 #include "wifiLogs.h"
 
+#define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
+#define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
+#define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
+
+#define NBMAXPARKINGS 25
+
 // Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
 const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
 
@@ -61,15 +67,12 @@ const parking_t parkings[] = {
                              { 0, 0, 0, 0 }
 };
 
-parking_data_t* available_parkings;
-
-#define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
-#define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
-#define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
+parking_data_t available_parkings[NBMAXPARKINGS];
 
 yxml_ret_t r;
 yxml_t x[1];
 char stack[32];
+int available_compteur;
 
 String _buildURL(const char *id) {
   String res = MONTPELLIER3M_BASE_URL;
@@ -81,7 +84,6 @@ String _buildURL(const char *id) {
 
 int getAvailableSpaces(String response) {
   yxml_init(x, stack, sizeof(stack));
-
   const char* xml = response.c_str();
   char sizebuf[1024], *sizecur = NULL, *tmp;
   bool isFree = false, isOpen = false;
@@ -126,6 +128,18 @@ int getAvailableSpaces(String response) {
   return -1;
 }
 
+void addAvailaibleParking(String response,const char *id,parking_data_t *parkings){
+  parking_data_t available_parking;
+  int spaces = getAvailableSpaces(response);
+  if(spaces > 0) {
+    available_parking.id = id;
+    available_parking.free = spaces;
+    //Serial.printf("Le pkg %s a %d places disponibles\n", available_parking.id, available_parking.free);
+    parkings[available_compteur] = available_parking;
+    if(available_compteur!=(NBMAXPARKINGS-1)) available_compteur++;
+  }
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -159,7 +173,8 @@ void loop() {
 
     Serial.print("[HTTPS] begin...\n");
     const parking_t *ptr = parkings;
-
+    // réinitialise le compteur
+    available_compteur=0;
     while(ptr->id) {
       String url = _buildURL(ptr->id);
 
@@ -175,20 +190,10 @@ void loop() {
         if (httpCode > 0) {
           // HTTP header has been send and Server response header has been handled
           Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-
           // file found at server
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-            String payload = https.getString();
-            
-            parking_data_t data;
-            int spaces = getAvailableSpaces(payload);
-
-            if(spaces > 0) {
-              data.id = ptr->id;
-              data.free = spaces;
-
-              Serial.printf("Le pkg %s a %d places disponibles\n", data.id, data.free);
-            }
+            //Ajout des parkings ouvert et libre dans la liste
+            addAvailaibleParking(https.getString(),ptr->id,available_parkings);
           }
         } else {
           Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
@@ -201,8 +206,11 @@ void loop() {
       
       ++ptr;
     }
+    
   }
-
+  for(int i =0; i<available_compteur;i++){
+    Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
+  }
   Serial.println("Wait 10s before next round...");
   delay(10000);
 }
