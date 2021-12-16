@@ -13,6 +13,9 @@
 #define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
 
 #define NBMAXPARKINGS 25
+#define STACKALLOC 32
+#define SIZEBUFALLOC 256
+#define XALLOC 1
 
 // Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
 const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
@@ -70,22 +73,22 @@ const parking_t parkings[] = {
 parking_data_t available_parkings[NBMAXPARKINGS];
 
 yxml_ret_t r;
-yxml_t x[1];
-char stack[32];
+yxml_t x[XALLOC];
+char stack[STACKALLOC];
 int available_compteur;
 
 String _buildURL(const char *id) {
-  String res = MONTPELLIER3M_BASE_URL;
-  res += MONTPELLIER3M_API_PATH_PREFIX;
-  res += id;
-  res += MONTPELLIER3M_API_PATH_SUFFIX;
-  return res;
+  String url = MONTPELLIER3M_BASE_URL;
+  url += MONTPELLIER3M_API_PATH_PREFIX;
+  url += id;
+  url += MONTPELLIER3M_API_PATH_SUFFIX;
+  return url;
 }
 
 int getAvailableSpaces(String response) {
   yxml_init(x, stack, sizeof(stack));
   const char* xml = response.c_str();
-  char sizebuf[1024], *sizecur = NULL, *tmp;
+  char sizebuf[SIZEBUFALLOC], *sizecur = NULL, *tmp;
   bool isFree = false, isOpen = false;
 
   while (*xml) {
@@ -105,8 +108,11 @@ int getAvailableSpaces(String response) {
         tmp = x->data;
         while(*tmp && sizecur < sizebuf+sizeof(sizebuf))
           *(sizecur++) = *(tmp++);
-        if(sizecur == sizebuf+sizeof(sizebuf))
-          return -1; /* Too long element content, handle error */
+        if(sizecur == sizebuf+sizeof(sizebuf)){
+          /* Too long element content, handle error */
+          Serial.println("Une erreur s'est produite");
+          return -1; 
+         }
         *sizecur = 0;
         break;
       case YXML_ELEMEND:
@@ -124,7 +130,7 @@ int getAvailableSpaces(String response) {
     
     xml++;
   }
-  
+  Serial.println("Une erreur s'est produite");
   return -1;
 }
 
