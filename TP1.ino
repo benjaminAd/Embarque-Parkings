@@ -1,3 +1,4 @@
+//Librairies
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
@@ -8,6 +9,7 @@
 #include "parkings.h"
 #include "wifiLogs.h"
 
+//Constantes
 #define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
 #define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
 #define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
@@ -17,13 +19,7 @@
 #define SIZEBUFALLOC 256
 #define XALLOC 1
 
-// Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
-const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
-
-ESP8266WiFiMulti WiFiMulti;
-
-// Données de géolocalisation : https://data.montpellier3m.fr/dataset/parkings-en-ouvrage-de-montpellier
-// Identifants : https://data.montpellier3m.fr/dataset/disponibilite-des-places-dans-les-parkings-de-montpellier-mediterranee-metropole
+//Variables Globales
 const parking_t parkings[] = {
                              /* ID,           name,                      longitude,         latitude */
                              { "FR_MTP_ANTI",  "Antigone",                   3.888818930000000, 43.608716059999999 },
@@ -70,12 +66,18 @@ const parking_t parkings[] = {
                              { 0, 0, 0, 0 }
 };
 
-parking_data_t available_parkings[NBMAXPARKINGS];
+const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
+
+ESP8266WiFiMulti WiFiMulti;
 
 yxml_ret_t r;
 yxml_t x[XALLOC];
 char stack[STACKALLOC];
+
+parking_data_t available_parkings[NBMAXPARKINGS];
 int available_compteur;
+
+/*----- Début des méthodes -----*/
 
 String _buildURL(const char *id) {
   String url = MONTPELLIER3M_BASE_URL;
@@ -214,6 +216,7 @@ void loop() {
     }
     
   }
+  //Une fois la connexion terminée on va regarder les distance sur les parkings disponibles
   for(int i =0; i<available_compteur;i++){
     Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
   }
