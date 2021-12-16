@@ -91,10 +91,8 @@ int getAvailableSpaces(String response) {
 
     switch(r) {
       case YXML_ELEMSTART:
-        if(strcmp(x->elem, "Status") == 0 || strcmp(x->elem, "Free") == 0) {
-          sizecur = sizebuf;
-          isFree = (strcmp(x->elem, "Free") == 0);
-        }
+        sizecur = (strcmp(x->elem, "Status") == 0 || strcmp(x->elem, "Free") == 0) ? sizebuf : NULL;
+        isFree = (strcmp(x->elem, "Free") == 0);
         if (yxml_symlen(x, x->elem) != strlen(x->elem))
           Serial.println("assertfail: elem lengths don't match");
         break;
@@ -106,18 +104,14 @@ int getAvailableSpaces(String response) {
         while(*tmp && sizecur < sizebuf+sizeof(sizebuf))
           *(sizecur++) = *(tmp++);
         if(sizecur == sizebuf+sizeof(sizebuf))
-          exit(1); /* Too long element content, handle error */
+          return -1; /* Too long element content, handle error */
         *sizecur = 0;
         break;
       case YXML_ELEMEND:
         if(sizecur) {
           /* Now we have the value of the "Status" or "Free" element in sizebuf */
           if(isFree) {
-            if(isOpen) {
-              return atoi(sizebuf);
-            } else {
-              return -1;
-            }
+            return (isOpen) ? atoi(sizebuf) : -1;
           } else {
             isOpen = (strcmp(sizebuf, "Open") == 0);
           }

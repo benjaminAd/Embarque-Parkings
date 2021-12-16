@@ -37,10 +37,8 @@ extern const parking_t parkings[];
  * through the Montpellier3M open-data services.
  */ 
 typedef struct {
-  std::string date_time;
-  bool open;
+  const char *id;
   unsigned int free;
-  unsigned int total;
 } parking_data_t;
 
 /**
