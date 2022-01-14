@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "parkings.h"
 #include "wifiLogs.h"
+#include "api.h"
 
 //Constantes
 #define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
@@ -146,6 +147,24 @@ void addAvailaibleParking(String response,const char *id,parking_data_t *parking
     parkings[available_compteur] = available_parking;
     if(available_compteur!=(NBMAXPARKINGS-1)) available_compteur++;
   }
+}
+
+parking_t getParkingFromId(char *id){
+  for(int i =0; i<sizeof(parkings);i++){
+    if(parkings[i].id == id){
+      return parkings[i];
+    }
+  }
+  return NULL;
+}
+
+parking_data_t getAvailableParkingFromId(char *id){
+  for(int i =0; i<available_compteur;i++){
+    if(available_parkings[i].id == id){
+      return available_parkings[i];
+    }
+  }
+  return NULL;
 }
 
 void setup() {
