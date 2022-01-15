@@ -102,6 +102,19 @@ String _buildURLGeo(){
   return "https://www.googleapis.com/geolocation/v1/geolocate";
 }
 
+String _buildURLMap(double parking_long,double parking_lat, double user_long, double user_lat){
+  String url="https://router.project-osrm.org/route/v1/driving/";
+  url+=String(user_long,7);
+  url+=",";
+  url+=String(user_lat,7);
+  url+=";";
+  url+=String(parking_long,7);
+  url+=",";
+  url+=String(parking_lat,7);
+  url+="?overview=false";
+  return url;
+}
+
 String _postArg(){
   String post_args = "key=";
   post_args+=GOOGLE_API_KEY;
@@ -169,19 +182,20 @@ void addAvailaibleParking(String response,const char *id,parking_data_t *parking
   }
 }
 
-parking_t getParkingFromId(char *id){
+parking_t getParkingFromId(const char *id){
   for(int i =0; i<NBMAXPARKINGS;i++){
-    if(parkings[i].id == id){
+    if(strcmp(parkings[i].id,id)==0){
       return parkings[i];
     }
   }
+  Serial.println("VA te faire foutre");
   const parking_t nullParking = { "NULL",  "NULL", 0.000, 0.000 };
   return nullParking;
 }
 
-parking_data_t getAvailableParkingFromId(char *id){
+parking_data_t getAvailableParkingFromId(const char *id){
   for(int i =0; i<available_compteur;i++){
-    if(available_parkings[i].id == id){
+    if(strcmp(available_parkings[i].id,id)==0){
       return available_parkings[i];
     }
   }
@@ -222,9 +236,7 @@ void setup() {
         https.addHeader("Content-Type", "application/x-www-form-urlencoded");
         Serial.print("[HTTPS]POST...");
         Serial.println(_buildURLGeo());
-        Serial.print("[HTTPS] POST...\n");
         // start connection and send HTTP header
-        Serial.println(_postArg());
         int httpCode = https.POST(_postArg());
 
         // httpCode will be negative on error
@@ -234,7 +246,7 @@ void setup() {
           // file found at server
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
             //Récupération de notre localisation
-            Serial.print("[HTTPS]... OK");
+            Serial.print("[HTTPS]... OK\n");
             payload = https.getString();
           }
         } else {
@@ -255,6 +267,9 @@ void setup() {
     our_lat    = jsonBuffer["location"]["lat"];
     our_long   = jsonBuffer["location"]["lng"];
   }
+
+  Serial.println(our_lat,6);
+  Serial.println(our_long,6);
 }
 
 void loop() {
@@ -304,11 +319,45 @@ void loop() {
       
       ++ptr;
     }
+
+   //Redonne le contrôle au micro contrôleur
+    delay(50);
     
-  }
   //Une fois la connexion terminée on va regarder les distance sur les parkings disponibles
-  for(int i =0; i<available_compteur;i++){
-    Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
+    HTTPClient https2;
+
+    Serial.print("[HTTPS] SETUP begin...\n");
+    for(int i =0; i<available_compteur;i++){
+        Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
+        parking_t currentparking = getParkingFromId(available_parkings[i].id);
+        Serial.println(_buildURLMap(currentparking.longitude,currentparking.latitude, our_long, our_lat));
+        if (https2.begin(*client,_buildURLMap(currentparking.longitude,currentparking.latitude, our_long, our_lat))) {
+        // start connection and send HTTP header
+        int httpCode2 = https2.GET();
+
+        // httpCode will be negative on error
+        if (httpCode2 > 0) {
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode2);
+          // file found at server
+          if (httpCode2 == HTTP_CODE_OK || httpCode2 == HTTP_CODE_MOVED_PERMANENTLY) {
+            Serial.print("[HTTPS]... OK\n");
+            //Parse json response
+            DynamicJsonDocument jsonBuffer(1024);
+            auto error = deserializeJson(jsonBuffer, https2.getString());
+            if (!error) {
+              available_parkings[i].distance = jsonBuffer["routes"][0]["distance"]; 
+            }
+          }
+        } else {
+          Serial.printf("[HTTPS] GET... failed, error: %s\n", https2.errorToString(httpCode2).c_str());
+        }
+
+        https2.end();
+      } else {
+        Serial.printf("[HTTPS] Unable to connect\n");
+      }
+      }
   }
   Serial.println("Wait 10s before next round...");
   delay(10000);
