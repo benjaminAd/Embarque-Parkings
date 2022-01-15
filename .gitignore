@@ -2,3 +2,6 @@
 wifiLogs.h
 
 api.h
+
+.vscode
+.DS_Store

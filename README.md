@@ -3,7 +3,7 @@
 Pour utiliser ce projet vous devrez installer les librairies arduino suivantes :
 
 - [LibYxml](https://www.arduino.cc/reference/en/libraries/libyxml/)
-- [ArduinoJsonParser](https://github.com/markert/ArduinoJsonParser)
+- [ArduinoJson](https://arduinojson.org/v6/doc/installation/)
 
 Ensuite vous devrez créer 2 fichiers externes :
 
