@@ -39,6 +39,7 @@ extern const parking_t parkings[];
 typedef struct {
   const char *id;
   unsigned int free;
+  double distance;
 } parking_data_t;
 
 /**
