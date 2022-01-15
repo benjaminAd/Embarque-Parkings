@@ -2,9 +2,8 @@
 
 Pour utiliser ce projet vous devrez installer les librairies arduino suivantes :
 
-- [WifiLocation](https://www.arduino.cc/reference/en/libraries/wifilocation/)
-  - Pour cette utiliser cette librairie vous devez posséder une clé d'API GoogleMaps (dans le cas de projet, la clé sera fourni dans le dépôt au correcteur)
 - [LibYxml](https://www.arduino.cc/reference/en/libraries/libyxml/)
+- [ArduinoJsonParser](https://github.com/markert/ArduinoJsonParser)
 
 Ensuite vous devrez créer 2 fichiers externes :
 
@@ -23,7 +22,7 @@ const char *wifi_password="***";
 ```
 #ifndef APIKEYS_H
 #define APIKEYS_H
-const char *GOOGLE_API_KEY = "*******"
+const char *GOOGLE_API_KEY = "*******";
 #endif
 ```
 
