@@ -5,6 +5,7 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #include <yxml.h>
+#include <ArduinoJson.h>
 #include <stdlib.h>
 #include "parkings.h"
 #include "wifiLogs.h"
@@ -72,8 +73,8 @@ const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41,
 #define SIZEBUFALLOC 256
 #define XALLOC 1
 
-#define DEFAULT_LONG "43.60375"
-#define DEFAULT_LAT "3.8962895"
+#define DEFAULT_LONG 3.8962895
+#define DEFAULT_LAT 43.60375
 
 
 
@@ -84,8 +85,8 @@ char stack[STACKALLOC];
 parking_data_t available_parkings[NBMAXPARKINGS];
 int available_compteur;
 
-const char *our_long=DEFAULT_LONG;
-const char *our_lat=DEFAULT_LAT;
+double our_long=DEFAULT_LONG;
+double our_lat=DEFAULT_LAT;
 
 /*----- Début des méthodes -----*/
 
@@ -205,7 +206,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(wifi_name, wifi_password);
-
+  String payload;
   if(WiFiMulti.run()==WL_CONNECTED){
     std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 
@@ -232,9 +233,10 @@ void setup() {
           Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
           // file found at server
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-            //Ajout des parkings ouvert et libre dans la liste
+            //Récupération de notre localisation
             Serial.print("[HTTPS]... OK");
             Serial.print(https.getString());
+            payload = https.getString();
           }
         } else {
           Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
@@ -246,7 +248,14 @@ void setup() {
       }
     
   }
-  
+
+  //Parse json response
+  DynamicJsonDocument jsonBuffer(1024);
+  auto error = deserializeJson(jsonBuffer, payload);
+    if (!error) {
+      our_lat    = jsonBuffer["location"]["lat"];
+      our_long   = jsonBuffer["location"]["lng"];
+    }
 }
 
 void loop() {
