@@ -235,7 +235,6 @@ void setup() {
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
             //Récupération de notre localisation
             Serial.print("[HTTPS]... OK");
-            Serial.print(https.getString());
             payload = https.getString();
           }
         } else {
@@ -252,10 +251,10 @@ void setup() {
   //Parse json response
   DynamicJsonDocument jsonBuffer(1024);
   auto error = deserializeJson(jsonBuffer, payload);
-    if (!error) {
-      our_lat    = jsonBuffer["location"]["lat"];
-      our_long   = jsonBuffer["location"]["lng"];
-    }
+  if (!error) {
+    our_lat    = jsonBuffer["location"]["lat"];
+    our_long   = jsonBuffer["location"]["lng"];
+  }
 }
 
 void loop() {
