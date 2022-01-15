@@ -10,17 +10,8 @@
 #include "wifiLogs.h"
 #include "api.h"
 
-//Constantes
-#define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
-#define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
-#define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
+ESP8266WiFiMulti WiFiMulti;
 
-#define NBMAXPARKINGS 25
-#define STACKALLOC 32
-#define SIZEBUFALLOC 256
-#define XALLOC 1
-
-//Variables Globales
 const parking_t parkings[] = {
                              /* ID,           name,                      longitude,         latitude */
                              { "FR_MTP_ANTI",  "Antigone",                   3.888818930000000, 43.608716059999999 },
@@ -69,7 +60,22 @@ const parking_t parkings[] = {
 
 const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41, 0x8e, 0xa3, 0xad, 0xfa, 0x1a, 0xe8, 0x25, 0x41, 0x1d, 0x1a, 0x54, 0xb3};
 
-ESP8266WiFiMulti WiFiMulti;
+
+
+//Constantes
+#define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
+#define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
+#define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
+
+#define NBMAXPARKINGS 25
+#define STACKALLOC 32
+#define SIZEBUFALLOC 256
+#define XALLOC 1
+
+#define DEFAULT_LONG "43.60375"
+#define DEFAULT_LAT "3.8962895"
+
+
 
 yxml_ret_t r;
 yxml_t x[XALLOC];
@@ -77,6 +83,9 @@ char stack[STACKALLOC];
 
 parking_data_t available_parkings[NBMAXPARKINGS];
 int available_compteur;
+
+const char *our_long=DEFAULT_LONG;
+const char *our_lat=DEFAULT_LAT;
 
 /*----- Début des méthodes -----*/
 
@@ -86,6 +95,16 @@ String _buildURL(const char *id) {
   url += id;
   url += MONTPELLIER3M_API_PATH_SUFFIX;
   return url;
+}
+
+String _buildURLGeo(){
+  return "https://www.googleapis.com/geolocation/v1/geolocate";
+}
+
+String _postArg(){
+  String post_args = "key=";
+  post_args+=GOOGLE_API_KEY;
+  return post_args;
 }
 
 int getAvailableSpaces(String response) {
@@ -150,12 +169,13 @@ void addAvailaibleParking(String response,const char *id,parking_data_t *parking
 }
 
 parking_t getParkingFromId(char *id){
-  for(int i =0; i<sizeof(parkings);i++){
+  for(int i =0; i<NBMAXPARKINGS;i++){
     if(parkings[i].id == id){
       return parkings[i];
     }
   }
-  return NULL;
+  const parking_t nullParking = { "NULL",  "NULL", 0.000, 0.000 };
+  return nullParking;
 }
 
 parking_data_t getAvailableParkingFromId(char *id){
@@ -164,7 +184,8 @@ parking_data_t getAvailableParkingFromId(char *id){
       return available_parkings[i];
     }
   }
-  return NULL;
+  const parking_data_t nullParking = { "NULL",  0 };
+  return nullParking;
 }
 
 void setup() {
@@ -184,6 +205,48 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(wifi_name, wifi_password);
+
+  if(WiFiMulti.run()==WL_CONNECTED){
+    std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+
+    //client->setFingerprint(fingerprint);
+    // Or, if you happy to ignore the SSL certificate, then use the following line instead:
+    client->setInsecure();
+
+    HTTPClient https;
+
+    Serial.print("[HTTPS] SETUP begin...\n");
+
+    if (https.begin(*client, _buildURLGeo())) {
+        https.addHeader("Content-Type", "application/x-www-form-urlencoded");
+        Serial.print("[HTTPS]POST...");
+        Serial.println(_buildURLGeo());
+        Serial.print("[HTTPS] POST...\n");
+        // start connection and send HTTP header
+        Serial.println(_postArg());
+        int httpCode = https.POST(_postArg());
+
+        // httpCode will be negative on error
+        if (httpCode > 0) {
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
+          // file found at server
+          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+            //Ajout des parkings ouvert et libre dans la liste
+            Serial.print("[HTTPS]... OK");
+            Serial.print(https.getString());
+          }
+        } else {
+          Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        }
+
+        https.end();
+      } else {
+        Serial.printf("[HTTPS] Unable to connect\n");
+      }
+    
+  }
+  
 }
 
 void loop() {
