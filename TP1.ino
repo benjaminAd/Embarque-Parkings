@@ -287,6 +287,7 @@ void setup() {
 
   Serial.println(our_lat,6);
   Serial.println(our_long,6);
+  //On a fini de récupérer la localisation on met la puce wifi au repos
    WiFi.mode( WIFI_OFF );
   WiFi.forceSleepBegin();
   yield();
@@ -394,7 +395,7 @@ void loop() {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
       }
-    
+    //Récupération du parking le plus proche et affichage
     parking_data_t current = getNearestParking();
     String parking_name = getParkingFromId(current.id).name;
     Serial.print("Le parking " + parking_name + " se trouve à ");
@@ -402,6 +403,7 @@ void loop() {
     Serial.println(" m");
   }
   Serial.println("Wait 20s before next round...");
+  //Pendant le délai on place la puce Wifi en mode sleep
   WiFi.mode( WIFI_OFF );
   WiFi.forceSleepBegin();
   yield();
