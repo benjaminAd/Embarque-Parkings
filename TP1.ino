@@ -234,7 +234,7 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
-  WiFi.setSleepMode(WIFI_MODEM_SLEEP);
+  WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
   WiFiMulti.addAP(wifi_name, wifi_password);
   String payload;
   if(WiFiMulti.run()==WL_CONNECTED){
