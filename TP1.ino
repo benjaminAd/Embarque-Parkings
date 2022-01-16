@@ -190,7 +190,6 @@ parking_t getParkingFromId(const char *id){
       return parkings[i];
     }
   }
-  Serial.println("VA te faire foutre");
   const parking_t nullParking = { "NULL",  "NULL", 0.000, 0.000 };
   return nullParking;
 }
@@ -208,9 +207,6 @@ parking_data_t getAvailableParkingFromId(const char *id){
 parking_data_t getNearestParking(){
   parking_data_t current = available_parkings[0];
   for(int i=1; i < (sizeof(available_parkings)/sizeof(available_parkings[0]));i++){
-    Serial.print(available_parkings[i].id);
-    Serial.print(" ");
-    Serial.println(available_parkings[i].distance);
     if(available_parkings[i].distance <= current.distance){
       current = available_parkings[i];
     }
@@ -234,6 +230,8 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
+  //à tester
+  WiFi.setSleepMode(WIFI_MODEM_SLEEP);
   WiFiMulti.addAP(wifi_name, wifi_password);
   String payload;
   if(WiFiMulti.run()==WL_CONNECTED){
@@ -329,7 +327,7 @@ void loop() {
 
         https.end();
         //Redonner la main à l'ESP
-        delay(50)
+        delay(50);
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
