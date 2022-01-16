@@ -88,6 +88,8 @@ int available_compteur;
 double our_long=DEFAULT_LONG;
 double our_lat=DEFAULT_LAT;
 
+
+
 /*----- Début des méthodes -----*/
 
 String _buildURL(const char *id) {
@@ -326,6 +328,8 @@ void loop() {
         }
 
         https.end();
+        //Redonner la main à l'ESP
+        delay(50)
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
@@ -367,6 +371,7 @@ void loop() {
         }
 
         https2.end();
+        //Redonner la main à l'ESP
         delay(50);
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
