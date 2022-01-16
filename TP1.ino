@@ -232,7 +232,8 @@ void setup() {
     Serial.flush();
     delay(1000);
   }
-
+  WiFi.forceSleepWake(); //Wake up wifi-chip from sleep
+  yield();
   WiFi.mode(WIFI_STA);
   WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
   WiFiMulti.addAP(wifi_name, wifi_password);
@@ -286,10 +287,15 @@ void setup() {
 
   Serial.println(our_lat,6);
   Serial.println(our_long,6);
+   WiFi.mode( WIFI_OFF );
+  WiFi.forceSleepBegin();
+  yield();
 }
 
 void loop() {
   // wait for WiFi connection
+   WiFi.forceSleepWake(); //Wake up wifi-chip from sleep
+  yield();
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
     std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
@@ -330,7 +336,7 @@ void loop() {
 
         https.end();
         //Redonner la main à l'ESP
-        delay(50);
+        yield();
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
@@ -339,7 +345,7 @@ void loop() {
     }
 
    //Redonne le contrôle au micro contrôleur
-    delay(50);
+    yield();
 
     //Aucun parking disponible, ou si l'api ne répond pas, on arrête
     if(sizeof(available_parkings)/sizeof(available_parkings[0]) <= 0){
@@ -381,7 +387,7 @@ void loop() {
 
         https2.end();
         //Redonner la main à l'ESP
-        delay(50);
+        yield();
       } else {
         //Si jamais une erreur se produit, on récupérera la distance à vol d'oiseau
         available_parkings[i].distance = getDistanceWithoutAPI(currentparking.longitude,currentparking.latitude, our_long, our_lat);
@@ -396,5 +402,8 @@ void loop() {
     Serial.println(" m");
   }
   Serial.println("Wait 20s before next round...");
+  WiFi.mode( WIFI_OFF );
+  WiFi.forceSleepBegin();
+  yield();
   delay(20000);
 }
