@@ -214,6 +214,10 @@ parking_data_t getNearestParking(){
   return current;
 }
 
+double getDistanceWithoutAPI(double parking_long,double parking_lat, double user_long, double user_lat){
+  return (parking_long - user_long) * (parking_long - user_long) + (parking_lat - user_lat) * (parking_lat - user_lat);
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -230,7 +234,6 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
-  //à tester
   WiFi.setSleepMode(WIFI_MODEM_SLEEP);
   WiFiMulti.addAP(wifi_name, wifi_password);
   String payload;
@@ -337,6 +340,12 @@ void loop() {
 
    //Redonne le contrôle au micro contrôleur
     delay(50);
+
+    //Aucun parking disponible, ou si l'api ne répond pas, on arrête
+    if(sizeof(available_parkings)/sizeof(available_parkings[0]) <= 0){
+      Serial.println("Aucun parking disponible");
+      return;
+    }
     
   //Une fois la connexion terminée on va regarder les distance sur les parkings disponibles
     HTTPClient https2;
@@ -365,6 +374,8 @@ void loop() {
             }
           }
         } else {
+          //Si jamais une erreur se produit, on récupérera la distance à vol d'oiseau
+          available_parkings[i].distance = getDistanceWithoutAPI(currentparking.longitude,currentparking.latitude, our_long, our_lat);
           Serial.printf("[HTTPS] GET... failed, error: %s\n", https2.errorToString(httpCode2).c_str());
         }
 
@@ -372,16 +383,18 @@ void loop() {
         //Redonner la main à l'ESP
         delay(50);
       } else {
+        //Si jamais une erreur se produit, on récupérera la distance à vol d'oiseau
+        available_parkings[i].distance = getDistanceWithoutAPI(currentparking.longitude,currentparking.latitude, our_long, our_lat);
         Serial.printf("[HTTPS] Unable to connect\n");
       }
       }
-
+    
     parking_data_t current = getNearestParking();
     String parking_name = getParkingFromId(current.id).name;
-    Serial.print(parking_name + " -> ");
+    Serial.print("Le parking " + parking_name + " se trouve à ");
     Serial.print(current.distance);
     Serial.println(" m");
   }
-  Serial.println("Wait 10s before next round...");
-  delay(10000);
+  Serial.println("Wait 20s before next round...");
+  delay(20000);
 }
