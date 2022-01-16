@@ -68,7 +68,7 @@ const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41,
 #define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
 #define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
 
-#define NBMAXPARKINGS 25
+#define NBMAXPARKINGS 23
 #define STACKALLOC 32
 #define SIZEBUFALLOC 256
 #define XALLOC 1
@@ -203,6 +203,19 @@ parking_data_t getAvailableParkingFromId(const char *id){
   return nullParking;
 }
 
+parking_data_t getNearestParking(){
+  parking_data_t current = available_parkings[0];
+  for(int i=1; i < (sizeof(available_parkings)/sizeof(available_parkings[0]));i++){
+    Serial.print(available_parkings[i].id);
+    Serial.print(" ");
+    Serial.println(available_parkings[i].distance);
+    if(available_parkings[i].distance <= current.distance){
+      current = available_parkings[i];
+    }
+  }
+  return current;
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -327,7 +340,7 @@ void loop() {
     HTTPClient https2;
 
     Serial.print("[HTTPS] SETUP begin...\n");
-    for(int i =0; i<available_compteur;i++){
+    for(int i =0; i<(sizeof(available_parkings)/sizeof(available_parkings[0]));i++){
         Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
         parking_t currentparking = getParkingFromId(available_parkings[i].id);
         Serial.println(_buildURLMap(currentparking.longitude,currentparking.latitude, our_long, our_lat));
@@ -354,10 +367,14 @@ void loop() {
         }
 
         https2.end();
+        delay(50);
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
       }
+
+    parking_data_t current = getNearestParking();
+    Serial.println(current.distance);
   }
   Serial.println("Wait 10s before next round...");
   delay(10000);
