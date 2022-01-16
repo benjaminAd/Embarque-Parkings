@@ -374,7 +374,10 @@ void loop() {
       }
 
     parking_data_t current = getNearestParking();
-    Serial.println(current.distance);
+    String parking_name = getParkingFromId(current.id).name;
+    Serial.print(parking_name + " -> ");
+    Serial.print(current.distance);
+    Serial.println(" m");
   }
   Serial.println("Wait 10s before next round...");
   delay(10000);
