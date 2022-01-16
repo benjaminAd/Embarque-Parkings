@@ -1,4 +1,4 @@
-//Librairies
+// Librairies
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
@@ -63,7 +63,7 @@ const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41,
 
 
 
-//Constantes
+// Constantes
 #define MONTPELLIER3M_BASE_URL "https://data.montpellier3m.fr/"
 #define MONTPELLIER3M_API_PATH_PREFIX "sites/default/files/ressources/"
 #define MONTPELLIER3M_API_PATH_SUFFIX ".xml"
@@ -76,8 +76,6 @@ const uint8_t fingerprint[20] = {0x40, 0xaf, 0x00, 0x6b, 0xec, 0x90, 0x22, 0x41,
 #define DEFAULT_LONG 3.8962895
 #define DEFAULT_LAT 43.60375
 
-
-
 yxml_ret_t r;
 yxml_t x[XALLOC];
 char stack[STACKALLOC];
@@ -85,41 +83,43 @@ char stack[STACKALLOC];
 parking_data_t available_parkings[NBMAXPARKINGS];
 int available_compteur;
 
-double our_long=DEFAULT_LONG;
-double our_lat=DEFAULT_LAT;
-
-
+double our_long = DEFAULT_LONG;
+double our_lat = DEFAULT_LAT;
 
 /*----- Début des méthodes -----*/
 
 String _buildURL(const char *id) {
   String url = MONTPELLIER3M_BASE_URL;
+  
   url += MONTPELLIER3M_API_PATH_PREFIX;
   url += id;
   url += MONTPELLIER3M_API_PATH_SUFFIX;
+  
   return url;
 }
 
-String _buildURLGeo(){
+String _buildURLGeo() {
   return "https://www.googleapis.com/geolocation/v1/geolocate";
 }
 
-String _buildURLMap(double parking_long,double parking_lat, double user_long, double user_lat){
-  String url="https://router.project-osrm.org/route/v1/driving/";
-  url+=String(user_long,7);
-  url+=",";
-  url+=String(user_lat,7);
-  url+=";";
-  url+=String(parking_long,7);
-  url+=",";
-  url+=String(parking_lat,7);
-  url+="?overview=false";
+String _buildURLMap(double parking_long, double parking_lat, double user_long, double user_lat) {
+  String url = "https://router.project-osrm.org/route/v1/driving/";
+  
+  url += String(user_long, 7);
+  url += ",";
+  url += String(user_lat, 7);
+  url += ";";
+  url += String(parking_long, 7);
+  url += ",";
+  url += String(parking_lat, 7);
+  url += "?overview=false";
+  
   return url;
 }
 
-String _postArg(){
+String _postArg() {
   String post_args = "key=";
-  post_args+=GOOGLE_API_KEY;
+  post_args += GOOGLE_API_KEY;
   return post_args;
 }
 
@@ -139,24 +139,30 @@ int getAvailableSpaces(String response) {
         if (yxml_symlen(x, x->elem) != strlen(x->elem))
           Serial.println("assertfail: elem lengths don't match");
         break;
+        
       case YXML_CONTENT:
-        if(!sizecur) /* Are we in the "Status" or "Free" element? */
+        if (!sizecur) /* Are we in the "Status" or "Free" element? */
           break;
         /* Append x->data to sizecur while there is space */
         tmp = x->data;
-        while(*tmp && sizecur < sizebuf+sizeof(sizebuf))
+        
+        while (*tmp && sizecur < sizebuf+sizeof(sizebuf)) {
           *(sizecur++) = *(tmp++);
-        if(sizecur == sizebuf+sizeof(sizebuf)){
+        }
+          
+        if (sizecur == sizebuf+sizeof(sizebuf)){
           /* Too long element content, handle error */
           Serial.println("Une erreur s'est produite");
           return -1; 
-         }
+        }
+        
         *sizecur = 0;
         break;
+        
       case YXML_ELEMEND:
-        if(sizecur) {
+        if (sizecur) {
           /* Now we have the value of the "Status" or "Free" element in sizebuf */
-          if(isFree) {
+          if (isFree) {
             return (isOpen) ? atoi(sizebuf) : -1;
           } else {
             isOpen = (strcmp(sizebuf, "Open") == 0);
@@ -168,55 +174,66 @@ int getAvailableSpaces(String response) {
     
     xml++;
   }
+  
   Serial.println("Une erreur s'est produite");
   return -1;
 }
 
-void addAvailaibleParking(String response,const char *id,parking_data_t *parkings){
+void addAvailaibleParking(String response, const char *id, parking_data_t *parkings) {
   parking_data_t available_parking;
   int spaces = getAvailableSpaces(response);
-  if(spaces > 0) {
+  
+  if (spaces > 0) {
     available_parking.id = id;
     available_parking.free = spaces;
     //Serial.printf("Le pkg %s a %d places disponibles\n", available_parking.id, available_parking.free);
     parkings[available_compteur] = available_parking;
-    if(available_compteur!=(NBMAXPARKINGS-1)) available_compteur++;
+    
+    if (available_compteur != (NBMAXPARKINGS-1)) {
+      available_compteur++;
+    }
   }
 }
 
-parking_t getParkingFromId(const char *id){
-  for(int i =0; i<NBMAXPARKINGS;i++){
-    if(strcmp(parkings[i].id,id)==0){
+parking_t getParkingFromId(const char *id) {
+  for (int i = 0; i < NBMAXPARKINGS; i++) {
+    if (strcmp(parkings[i].id, id) == 0) {
       return parkings[i];
     }
   }
-  const parking_t nullParking = { "NULL",  "NULL", 0.000, 0.000 };
+  
+  const parking_t nullParking = {"NULL",  "NULL", 0.000, 0.000 };
   return nullParking;
 }
 
-parking_data_t getAvailableParkingFromId(const char *id){
-  for(int i =0; i<available_compteur;i++){
-    if(strcmp(available_parkings[i].id,id)==0){
+parking_data_t getAvailableParkingFromId(const char *id) {
+  for (int i = 0; i < available_compteur; i++) {
+    if (strcmp(available_parkings[i].id, id) == 0) {
       return available_parkings[i];
     }
   }
+  
   const parking_data_t nullParking = { "NULL",  0 };
   return nullParking;
 }
 
-parking_data_t getNearestParking(){
+parking_data_t getNearestParking() {
   parking_data_t current = available_parkings[0];
-  for(int i=1; i < (sizeof(available_parkings)/sizeof(available_parkings[0]));i++){
-    if(available_parkings[i].distance <= current.distance){
+  
+  for (int i = 1; i < (sizeof(available_parkings) / sizeof(available_parkings[0])); i++) {
+    if (available_parkings[i].distance <= current.distance) {
       current = available_parkings[i];
     }
   }
+  
   return current;
 }
 
-double getDistanceWithoutAPI(double parking_long,double parking_lat, double user_long, double user_lat){
+double getDistanceWithoutAPI(double parking_long, double parking_lat, double user_long, double user_lat) {
   return (parking_long - user_long) * (parking_long - user_long) + (parking_lat - user_lat) * (parking_lat - user_lat);
 }
+
+/*----- Setup -----*/
 
 void setup() {
 
@@ -232,112 +249,100 @@ void setup() {
     Serial.flush();
     delay(1000);
   }
-  WiFi.forceSleepWake(); //Wake up wifi-chip from sleep
+  WiFi.forceSleepWake(); // Wake up wifi-chip from sleep
   yield();
   WiFi.mode(WIFI_STA);
   WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
   WiFiMulti.addAP(wifi_name, wifi_password);
   String payload;
-  if(WiFiMulti.run()==WL_CONNECTED){
+  if (WiFiMulti.run() == WL_CONNECTED) {
     std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 
     //client->setFingerprint(fingerprint);
-    // Or, if you happy to ignore the SSL certificate, then use the following line instead:
-    client->setInsecure();
+    client->setInsecure(); // Or, if you happy to ignore the SSL certificate, then use this line instead
 
     HTTPClient https;
 
     Serial.print("[HTTPS] SETUP begin...\n");
 
     if (https.begin(*client, _buildURLGeo())) {
-        https.addHeader("Content-Type", "application/x-www-form-urlencoded");
-        Serial.print("[HTTPS]POST...");
-        Serial.println(_buildURLGeo());
-        // start connection and send HTTP header
-        int httpCode = https.POST(_postArg());
+      https.addHeader("Content-Type", "application/x-www-form-urlencoded");
+      Serial.print("[HTTPS]POST...");
+      Serial.println(_buildURLGeo());
+      int httpCode = https.POST(_postArg()); // start connection and send HTTP header
 
-        // httpCode will be negative on error
-        if (httpCode > 0) {
-          // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-          // file found at server
-          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-            //Récupération de notre localisation
-            Serial.print("[HTTPS]... OK\n");
-            payload = https.getString();
-          }
-        } else {
-          Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
+      if (httpCode > 0) { // httpCode will be negative on error
+        Serial.printf("[HTTPS] POST... code: %d\n", httpCode); // HTTP header has been send and Server response header has been handled
+       
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) { // file found at server
+          Serial.print("[HTTPS]... OK\n"); // Récupération de notre localisation
+          payload = https.getString();
         }
-
-        https.end();
       } else {
-        Serial.printf("[HTTPS] Unable to connect\n");
+        Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
       }
-    
+
+      https.end();
+    } else {
+      Serial.printf("[HTTPS] Unable to connect\n");
+    }
   }
 
-  //Parse json response
+  // Parse json response
   DynamicJsonDocument jsonBuffer(1024);
   auto error = deserializeJson(jsonBuffer, payload);
+  
   if (!error) {
-    our_lat    = jsonBuffer["location"]["lat"];
-    our_long   = jsonBuffer["location"]["lng"];
+    our_lat = jsonBuffer["location"]["lat"];
+    our_long = jsonBuffer["location"]["lng"];
   }
 
-  Serial.println(our_lat,6);
-  Serial.println(our_long,6);
-  //On a fini de récupérer la localisation on met la puce wifi au repos
-   WiFi.mode( WIFI_OFF );
+  Serial.println(our_lat, 6);
+  Serial.println(our_long, 6);
+  
+  WiFi.mode(WIFI_OFF); // On a fini de récupérer la localisation on met la puce wifi au repos
   WiFi.forceSleepBegin();
   yield();
 }
 
+/*----- Loop -----*/
+
 void loop() {
   // wait for WiFi connection
-   WiFi.forceSleepWake(); //Wake up wifi-chip from sleep
+  WiFi.forceSleepWake(); // Wake up wifi-chip from sleep
   yield();
+  
   if ((WiFiMulti.run() == WL_CONNECTED)) {
-
     std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
-
+    
     //client->setFingerprint(fingerprint);
-    // Or, if you happy to ignore the SSL certificate, then use the following line instead:
-    client->setInsecure();
+    client->setInsecure(); // Or, if you happy to ignore the SSL certificate, then use this line
 
     HTTPClient https;
 
     Serial.print("[HTTPS] begin...\n");
     const parking_t *ptr = parkings;
-    // réinitialise le compteur
-    available_compteur=0;
-    while(ptr->id) {
+    available_compteur = 0; // réinitialise le compteur
+    
+    while (ptr->id) {
       String url = _buildURL(ptr->id);
-
       Serial.println(url);
       
-      if (https.begin(*client, url)) {  // HTTPS
-
+      if (https.begin(*client, url)) { // HTTPS
         Serial.print("[HTTPS] GET...\n");
-        // start connection and send HTTP header
-        int httpCode = https.GET();
+        int httpCode = https.GET(); // start connection and send HTTP header
 
-        // httpCode will be negative on error
-        if (httpCode > 0) {
-          // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-          // file found at server
-          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-            //Ajout des parkings ouvert et libre dans la liste
-            addAvailaibleParking(https.getString(),ptr->id,available_parkings);
+        if (httpCode > 0) { // httpCode will be negative on error
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode); // HTTP header has been send and Server response header has been handled
+          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) { // file found at server
+            addAvailaibleParking(https.getString(), ptr->id, available_parkings); // Ajout des parkings ouvert et libre dans la liste
           }
         } else {
           Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
         }
 
         https.end();
-        //Redonner la main à l'ESP
-        yield();
+        yield(); // Redonner la main à l'ESP
       } else {
         Serial.printf("[HTTPS] Unable to connect\n");
       }
@@ -345,36 +350,31 @@ void loop() {
       ++ptr;
     }
 
-   //Redonne le contrôle au micro contrôleur
-    yield();
+    yield(); // Redonne le contrôle au micro contrôleur
 
-    //Aucun parking disponible, ou si l'api ne répond pas, on arrête
-    if(sizeof(available_parkings)/sizeof(available_parkings[0]) <= 0){
+    if (sizeof(available_parkings) / sizeof(available_parkings[0]) <= 0) { // Aucun parking disponible, ou si l'api ne répond pas, on arrête
       Serial.println("Aucun parking disponible");
       return;
     }
     
-  //Une fois la connexion terminée on va regarder les distance sur les parkings disponibles
-    HTTPClient https2;
+    HTTPClient https2; // Une fois la connexion terminée on va regarder les distance sur les parkings disponibles
 
     Serial.print("[HTTPS] SETUP begin...\n");
-    for(int i =0; i<(sizeof(available_parkings)/sizeof(available_parkings[0]));i++){
-        Serial.printf("id : %s; free : %d\n",available_parkings[i].id,available_parkings[i].free);
+    
+    for (int i =0; i < (sizeof(available_parkings) / sizeof(available_parkings[0])); i++) {
+        Serial.printf("id : %s; free : %d\n", available_parkings[i].id, available_parkings[i].free);
         parking_t currentparking = getParkingFromId(available_parkings[i].id);
-        Serial.println(_buildURLMap(currentparking.longitude,currentparking.latitude, our_long, our_lat));
-        if (https2.begin(*client,_buildURLMap(currentparking.longitude,currentparking.latitude, our_long, our_lat))) {
-        // start connection and send HTTP header
-        int httpCode2 = https2.GET();
+        Serial.println(_buildURLMap(currentparking.longitude, currentparking.latitude, our_long, our_lat));
+        
+        if (https2.begin(*client, _buildURLMap(currentparking.longitude, currentparking.latitude, our_long, our_lat))) {
+        int httpCode2 = https2.GET(); // start connection and send HTTP header
 
-        // httpCode will be negative on error
-        if (httpCode2 > 0) {
-          // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] GET... code: %d\n", httpCode2);
-          // file found at server
+        if (httpCode2 > 0) { // httpCode will be negative on error
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode2); // HTTP header has been send and Server response header has been handled
+         
           if (httpCode2 == HTTP_CODE_OK || httpCode2 == HTTP_CODE_MOVED_PERMANENTLY) {
             Serial.print("[HTTPS]... OK\n");
-            //Parse json response
-            DynamicJsonDocument jsonBuffer(1024);
+            DynamicJsonDocument jsonBuffer(1024); // Parse json response
             auto error = deserializeJson(jsonBuffer, https2.getString());
             if (!error) {
               available_parkings[i].distance = jsonBuffer["routes"][0]["distance"]; 
@@ -387,24 +387,25 @@ void loop() {
         }
 
         https2.end();
-        //Redonner la main à l'ESP
-        yield();
+        yield(); // Redonner la main à l'ESP
       } else {
-        //Si jamais une erreur se produit, on récupérera la distance à vol d'oiseau
-        available_parkings[i].distance = getDistanceWithoutAPI(currentparking.longitude,currentparking.latitude, our_long, our_lat);
+        // Si jamais une erreur se produit, on récupérera la distance à vol d'oiseau
+        available_parkings[i].distance = getDistanceWithoutAPI(currentparking.longitude, currentparking.latitude, our_long, our_lat);
         Serial.printf("[HTTPS] Unable to connect\n");
       }
-      }
-    //Récupération du parking le plus proche et affichage
+    }
+    
+    // Récupération du parking le plus proche et affichage
     parking_data_t current = getNearestParking();
     String parking_name = getParkingFromId(current.id).name;
     Serial.print("Le parking " + parking_name + " se trouve à ");
     Serial.print(current.distance);
     Serial.println(" m");
   }
+  
   Serial.println("Wait 20s before next round...");
-  //Pendant le délai on place la puce Wifi en mode sleep
-  WiFi.mode( WIFI_OFF );
+  // Pendant le délai on place la puce Wifi en mode sleep
+  WiFi.mode(WIFI_OFF);
   WiFi.forceSleepBegin();
   yield();
   delay(20000);
